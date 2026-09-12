@@ -79,14 +79,14 @@ export const StationMarker = memo(({ station }: StationMarkerProps) => {
 
 					if (stationEntry) {
 						router.push(
-							`https://edr.simrail.app/${pathname.split("/")[2]}/station/${
+							`https://edr.fynnovation.com/${pathname.split("/")[2]}/station/${
 								stationEntry.id
 							}`,
 						);
 					} else {
 						// Fallback to old behavior if station not found
 						router.push(
-							`https://edr.simrail.app/${
+							`https://edr.fynnovation.com/${
 								pathname.split("/")[2]
 							}/station/${station.Prefix.toUpperCase()}`,
 						);

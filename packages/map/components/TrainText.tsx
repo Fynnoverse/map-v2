@@ -266,7 +266,7 @@ const TrainText = ({
 					<a
 						target="_blank"
 						rel="noreferrer"
-						href={`https://edr.simrail.app/${String(id)}/train/${String(train.TrainNoLocal)}`}
+						href={`https://edr.fynnovation.com/${String(id)}/train/${String(train.TrainNoLocal)}`}
 						className={styles.edrButton}
 					>
 						Open in EDR <span aria-hidden="true">↗</span>

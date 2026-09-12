@@ -1,3 +1,4 @@
+import { EDR_API_URL } from "@/components/hosting";
 import type { ProfileResponse } from "types/SteamProfile";
 
 const profileCache = new Map<string, Promise<[string | null, string]>>();
@@ -6,7 +7,7 @@ const getSteamProfileInfos = async (
 	steamId: string,
 ): Promise<ProfileResponse> => {
 	const response = await fetch(
-		`https://simrail-edr.emeraldnetwork.xyz/steam/${steamId}`,
+		`${EDR_API_URL}/steam/${steamId}`,
 	);
 	if (!response.ok)
 		throw new Error(`Profile request failed: ${response.status}`);

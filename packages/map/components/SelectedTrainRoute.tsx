@@ -1,3 +1,4 @@
+import { EDR_API_URL, ROUTING_URL } from "@/components/hosting";
 import type { Station } from "@simrail/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Polyline } from "react-leaflet";
@@ -98,7 +99,7 @@ const SelectedTrainRoute = ({
 			try {
 				const selectedStationIndex = stationIndexRef.current;
 				const timetableResponse = await fetch(
-					`https://simrail-edr.emeraldnetwork.xyz/train/${encodeURIComponent(serverId)}/${encodeURIComponent(trainNumber)}`,
+					`${EDR_API_URL}/train/${encodeURIComponent(serverId)}/${encodeURIComponent(trainNumber)}`,
 					{ signal: controller.signal },
 				);
 				if (!timetableResponse.ok)
@@ -127,7 +128,7 @@ const SelectedTrainRoute = ({
 					.map(([latitude, longitude]) => `${longitude},${latitude}`)
 					.join(";");
 				const routingResponse = await fetch(
-					`https://routing.simrail-edr.de/route/v1/train/${coordinates}?overview=full&geometries=geojson`,
+					`${ROUTING_URL}/route/v1/train/${coordinates}?overview=full&geometries=geojson`,
 					{ signal: controller.signal },
 				);
 				if (!routingResponse.ok)

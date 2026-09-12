@@ -45,7 +45,7 @@ const Post = () => {
 				<title>{pageTitle}</title>
 				<link
 					rel="canonical"
-					href={`https://map.simrail.app/server/${id.toString()}`}
+					href={`https://map.fynnovation.com/server/${id.toString()}`}
 					key="canonical"
 				/>
 			</Head>

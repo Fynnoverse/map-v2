@@ -56,3 +56,11 @@ This projects is a monorepo containing two projects:
 
 - `packages/home`: The main portal page hosted at [www.simrail.app](https://www.simrail.app) that redirects users to either EDR or the map.
 - `packages/map`: The interactive map project hosted at [map.simrail.app](https://map.simrail.app).
+
+## Docker deployment with EDR
+
+This Dockerfile builds `packages/map` as a static export and serves it with
+Nginx on port 80. Use the sibling `EDR/compose.yaml` and its
+`docs/docker-map.md` guide for the complete stack. The Docker build sets the
+browser API paths to `/api` and `/routing`; the shared gateway forwards these
+to EDR and OSRM. Running this image alone requires an equivalent reverse proxy.
