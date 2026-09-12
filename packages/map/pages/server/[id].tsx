@@ -45,7 +45,7 @@ const Post = () => {
 				<title>{pageTitle}</title>
 				<link
 					rel="canonical"
-					href={`https://map.fynnovation.com/server/${id.toString()}`}
+					href={`https://map.edr.fynnovation.com/server/${id.toString()}`}
 					key="canonical"
 				/>
 			</Head>
