@@ -64,3 +64,26 @@ Nginx on port 80. Use the sibling `EDR/compose.yaml` and its
 `docs/docker-map.md` guide for the complete stack. The Docker build sets the
 browser API paths to `/api` and `/routing`; the shared gateway forwards these
 to EDR and OSRM. Running this image alone requires an equivalent reverse proxy.
+
+## Selected train route
+
+Selecting a train highlights its route in orange. The **Show selected train
+route** checkbox on the map remembers your preference. A solid line uses railway
+routing geometry through known timetable points. If routing fails, a dashed line
+connects the known timetable points directly; it is explicitly approximate and
+can omit stops without matching coordinates. It does not represent the exact
+track or the actual signal/dispatcher path. The status panel offers **Retry route**
+when routing or timetable data is unavailable.
+
+The timetable endpoint must return an EDR timetable array. The routing endpoint
+configured by `NEXT_PUBLIC_ROUTING_URL` must return OSRM JSON with `code: "Ok"`
+and GeoJSON geometry. With the Dockerfile's `/routing` setting, configure that
+path in your reverse proxy to reach a working railway OSRM service. A 404 page
+or an HTML response will activate the approximate display. Public URL settings
+are embedded during the frontend build.
+
+Route data regression tests (Node.js 24):
+
+```sh
+node --test tests/routeGeometry.test.mjs
+```

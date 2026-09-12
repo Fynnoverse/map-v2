@@ -1,181 +1,201 @@
-import { EDR_API_URL, ROUTING_URL } from "@/components/hosting";
+import { useLocalStorage } from "@mantine/hooks";
 import type { Station } from "@simrail/types";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { DomEvent } from "leaflet";
+import { useEffect, useState } from "react";
 import { Polyline } from "react-leaflet";
+import Control from "react-leaflet-custom-control";
+
+import { EDR_API_URL, ROUTING_URL } from "@/components/hosting";
 
 import { useSelectedTrain } from "../contexts/SelectedTrainContext";
+import {
+	routingPoints,
+	timetableRoute,
+	type RoutePoint,
+	type RouteStation,
+} from "./routeGeometry";
 import localStations from "./stations.json";
 import remoteStations from "./stationsRemote.json";
 
-type RoutePoint = [number, number];
-
-type SelectedTrainRouteProps = {
-	serverId: string;
-	stations: Station[];
+type Result = {
+	matched?: number;
+	total?: number;
+	key: string;
+	points: RoutePoint[];
+	status: "loading" | "railway" | "unavailable";
 };
-
-type RouteStation = {
-	Name: string;
-	Prefix?: string;
-	id?: string;
-	Latititude: number;
-	Longitude: number;
-};
-
-type TimetablePoint = {
-	nameOfPoint?: string;
-	indexOfPoint?: number;
-};
-
-type RoutingResponse = {
-	routes?: Array<{
-		geometry?: { coordinates?: [number, number][] };
-	}>;
-};
-
-const normalizeStationName = (value: string) =>
-	value
-		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "")
-		.toLocaleLowerCase()
-		.replace(/[^a-z0-9]/g, "");
-
-const removeDuplicatePoints = (points: RoutePoint[]) =>
-	points.filter((point, index) => {
-		if (index === 0) return true;
-		const previous = points[index - 1];
-		const current = point;
-		return previous[0] !== current[0] || previous[1] !== current[1];
-	});
 
 const SelectedTrainRoute = ({
 	serverId,
 	stations,
-}: SelectedTrainRouteProps) => {
+}: {
+	serverId: string;
+	stations: Station[];
+}) => {
 	const { selectedTrain } = useSelectedTrain();
-	const [routeResult, setRouteResult] = useState<{
-		key: string;
-		points: RoutePoint[];
-	}>({ key: "", points: [] });
-	const stationIndex = useMemo(() => {
-		const index = new Map<string, RoutePoint>();
-		const allStations = [
-			...(localStations as RouteStation[]),
-			...(remoteStations as RouteStation[]),
-			...(stations as RouteStation[]),
-		];
-
-		for (const station of allStations) {
-			if (
-				!Number.isFinite(station.Latititude) ||
-				!Number.isFinite(station.Longitude)
-			)
-				continue;
-
-			const position: RoutePoint = [station.Latititude, station.Longitude];
-			for (const name of [station.Name, station.Prefix, station.id]) {
-				if (name) index.set(normalizeStationName(name), position);
-			}
-		}
-
-		return index;
-	}, [stations]);
-	const stationIndexRef = useRef(stationIndex);
-
-	useEffect(() => {
-		stationIndexRef.current = stationIndex;
-	}, [stationIndex]);
-
+	const [visible, setVisible] = useLocalStorage({
+		key: "showSelectedTrainRoute",
+		defaultValue: true,
+	});
+	const [attempt, setAttempt] = useState(0);
+	const [result, setResult] = useState<Result>({
+		key: "",
+		points: [],
+		status: "loading",
+	});
 	const trainNumber = selectedTrain?.TrainNoLocal;
-	const routeKey = trainNumber ? `${serverId}:${trainNumber}` : "";
-	const route = routeResult.key === routeKey ? routeResult.points : [];
+	// Stable across live station updates; retry only when names or coordinates change.
+	const stationData = JSON.stringify(
+		stations.map(({ Name, Prefix, id, Latititude, Longitude }) => ({
+			Name,
+			Prefix,
+			id,
+			Latititude,
+			Longitude,
+		})),
+	);
+	const key = `${serverId}:${trainNumber ?? ""}:${attempt}:${visible}:${stationData}`;
+	const current: Omit<Result, "key"> =
+		result.key === key ? result : { points: [], status: "loading" };
 
 	useEffect(() => {
-		if (!trainNumber) return;
-
+		if (!trainNumber || !visible) return;
 		const controller = new AbortController();
-
-		const loadRoute = async () => {
+		let retryTimer: ReturnType<typeof setTimeout> | undefined;
+		let retryCount = 0;
+		let coverage: { matched?: number; total?: number } = {};
+		const publish = (points: RoutePoint[], status: Result["status"]) => {
+			if (!controller.signal.aborted)
+				setResult({ key, points, status, ...coverage });
+		};
+		const loadJson = async (url: string): Promise<unknown> => {
+			const response = await fetch(url, {
+				signal: AbortSignal.any([
+					controller.signal,
+					AbortSignal.timeout(15000),
+				]),
+			});
+			if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+			return response.json() as Promise<unknown>;
+		};
+		const load = async () => {
 			try {
-				const selectedStationIndex = stationIndexRef.current;
-				const timetableResponse = await fetch(
+				const timetable = await loadJson(
 					`${EDR_API_URL}/train/${encodeURIComponent(serverId)}/${encodeURIComponent(trainNumber)}`,
-					{ signal: controller.signal },
 				);
-				if (!timetableResponse.ok)
-					throw new Error(
-						`Timetable request failed: ${timetableResponse.status}`,
-					);
-				const timetable = (await timetableResponse.json()) as TimetablePoint[];
-
-				const waypoints = removeDuplicatePoints(
-					timetable
-						.slice()
-						.sort((a, b) => (a.indexOfPoint ?? 0) - (b.indexOfPoint ?? 0))
-						.map((point) =>
-							point.nameOfPoint
-								? selectedStationIndex.get(
-										normalizeStationName(point.nameOfPoint),
-									)
-								: undefined,
-						)
-						.filter((point): point is RoutePoint => point !== undefined),
-				);
-
-				if (waypoints.length < 2) return;
-
-				const coordinates = waypoints
-					.map(([latitude, longitude]) => `${longitude},${latitude}`)
+				const route = timetableRoute(timetable, [
+					...localStations,
+					...remoteStations,
+					...(JSON.parse(stationData) as RouteStation[]),
+				]);
+				coverage = { matched: route.matched, total: route.total };
+				if (route.points.length < 2) {
+					publish([], "unavailable");
+					return;
+				}
+				const coordinates = route.points
+					.map(([lat, lon]) => `${lon},${lat}`)
 					.join(";");
-				const routingResponse = await fetch(
+				const data = await loadJson(
 					`${ROUTING_URL}/route/v1/train/${coordinates}?overview=full&geometries=geojson`,
-					{ signal: controller.signal },
 				);
-				if (!routingResponse.ok)
-					throw new Error(`Route request failed: ${routingResponse.status}`);
-
-				const routingData = (await routingResponse.json()) as RoutingResponse;
-				const routeCoordinates =
-					routingData.routes?.[0]?.geometry?.coordinates
-						?.filter(
-							(point): point is [number, number] =>
-								Array.isArray(point) &&
-								point.length === 2 &&
-								point.every(Number.isFinite),
-						)
-						.map(
-							([longitude, latitude]) =>
-								[latitude, longitude] as [number, number],
-						) ?? [];
-
-				if (!controller.signal.aborted)
-					setRouteResult({ key: routeKey, points: routeCoordinates });
-			} catch (error) {
-				if ((error as Error).name !== "AbortError")
-					setRouteResult({ key: routeKey, points: [] });
+				publish(routingPoints(data), "railway");
+			} catch {
+				publish([], "unavailable");
+				// Bounded recovery; selecting another train or hiding the route cancels it.
+				if (!controller.signal.aborted && retryCount < 3) {
+					retryTimer = setTimeout(() => {
+						void load();
+					}, [5000, 15000, 30000][retryCount++]);
+				}
 			}
 		};
-
-		void loadRoute();
-		return () => controller.abort();
-	}, [routeKey, serverId, trainNumber]);
-
-	if (route.length < 2) return null;
-
+		void load();
+		return () => {
+			controller.abort();
+			clearTimeout(retryTimer);
+		};
+	}, [key, serverId, trainNumber, visible, stationData]);
+	if (!trainNumber) return null;
+	const message = !visible
+		? "Route hidden"
+		: current.status === "loading"
+			? "Loading route…"
+			: current.status === "unavailable"
+				? "Route unavailable — check routing and timetable data"
+				: "Railway route via known timetable points";
 	return (
 		<>
-			<Polyline
-				positions={route}
-				pathOptions={{ color: "#101217", opacity: 0.7, weight: 5 }}
-				interactive={false}
-			/>
-			<Polyline
-				positions={route}
-				pathOptions={{ color: "#ffad32", opacity: 0.95, weight: 2 }}
-				interactive={false}
-			/>
+			<Control position="bottomleft">
+				<div
+					ref={(node) => {
+						if (node) {
+							DomEvent.disableClickPropagation(node);
+							DomEvent.disableScrollPropagation(node);
+						}
+					}}
+					style={{
+						background: "#11141b",
+						color: "#eef1f5",
+						padding: 10,
+						borderRadius: 9,
+						maxWidth: 240,
+						fontSize: 12,
+					}}
+				>
+					<label style={{ display: "flex", gap: 8, cursor: "pointer" }}>
+						<input
+							type="checkbox"
+							checked={visible}
+							onChange={(event) => setVisible(event.target.checked)}
+						/>
+						Show selected train route
+					</label>
+					{visible &&
+						current.total !== undefined &&
+						current.matched !== undefined &&
+						current.matched < current.total && (
+							<div role="status">
+								{current.matched} of {current.total} timetable points located —
+								route may be incomplete
+							</div>
+						)}
+					<div role="status" style={{ marginTop: 6 }}>
+						{message}
+					</div>
+					{visible && current.status === "unavailable" && (
+						<button
+							type="button"
+							onClick={() => setAttempt((value) => value + 1)}
+						>
+							Retry route
+						</button>
+					)}
+				</div>
+			</Control>
+			{visible && current.points.length >= 2 && (
+				<>
+					<Polyline
+						positions={current.points}
+						pathOptions={{
+							color: "#101217",
+							opacity: 0.7,
+							weight: 7,
+						}}
+						interactive={false}
+					/>
+					<Polyline
+						positions={current.points}
+						pathOptions={{
+							color: "#ffad32",
+							opacity: 0.95,
+							weight: 4,
+						}}
+						interactive={false}
+					/>
+				</>
+			)}
 		</>
 	);
 };
-
 export default SelectedTrainRoute;
