@@ -1,7 +1,7 @@
 import { useLocalStorage } from "@mantine/hooks";
 import type { Station } from "@simrail/types";
 import type { Control as LeafletControl } from "leaflet";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Polyline } from "react-leaflet";
 
 import { EDR_API_URL, ROUTING_URL } from "@/components/hosting";
@@ -14,6 +14,7 @@ import {
 	type RoutePoint,
 	type RouteStation,
 } from "./routeGeometry";
+import { splitRouteAtTrain } from "./routeProgress";
 import { routeRetry } from "./routeRetry";
 import localStations from "./stations.json";
 import remoteStations from "./stationsRemote.json";
@@ -119,6 +120,18 @@ const SelectedTrainRoute = ({
 			controller.abort();
 		};
 	}, [key, serverId, trainNumber, visible, stationData]);
+	const latitude = selectedTrain?.TrainData.Latititute;
+	const longitude = selectedTrain?.TrainData.Longitute;
+	const progress = useMemo(
+		() =>
+			splitRouteAtTrain(
+				current.points,
+				latitude !== undefined && longitude !== undefined
+					? [latitude, longitude]
+					: undefined,
+			),
+		[current.points, latitude, longitude],
+	);
 	const message = !trainNumber
 		? "Select a train"
 		: !visible
@@ -157,6 +170,18 @@ const SelectedTrainRoute = ({
 							route may be incomplete
 						</div>
 					)}
+				{trainNumber && visible && current.status === "railway" && (
+					<div className="route-progress-legend">
+						{progress.located ? (
+							<>
+								<span className="route-passed-key">Passed</span>
+								<span className="route-remaining-key">Remaining</span>
+							</>
+						) : (
+							"Route progress uncertain"
+						)}
+					</div>
+				)}
 				<div role="status" style={{ marginTop: 6 }}>
 					{message}
 				</div>
@@ -171,24 +196,27 @@ const SelectedTrainRoute = ({
 			</LayerOptions>
 			{trainNumber && visible && current.points.length >= 2 && (
 				<>
-					<Polyline
-						positions={current.points}
-						pathOptions={{
-							color: "#101217",
-							opacity: 0.7,
-							weight: 7,
-						}}
-						interactive={false}
-					/>
-					<Polyline
-						positions={current.points}
-						pathOptions={{
-							color: "#ffad32",
-							opacity: 0.95,
-							weight: 4,
-						}}
-						interactive={false}
-					/>
+					{progress.passed.length >= 2 && (
+						<Polyline
+							positions={progress.passed}
+							pathOptions={{ color: "#89919b", opacity: 0.65, weight: 4 }}
+							interactive={false}
+						/>
+					)}
+					{progress.remaining.length >= 2 && (
+						<>
+							<Polyline
+								positions={progress.remaining}
+								pathOptions={{ color: "#101217", opacity: 0.7, weight: 7 }}
+								interactive={false}
+							/>
+							<Polyline
+								positions={progress.remaining}
+								pathOptions={{ color: "#ffad32", opacity: 0.95, weight: 4 }}
+								interactive={false}
+							/>
+						</>
+					)}
 				</>
 			)}
 		</>

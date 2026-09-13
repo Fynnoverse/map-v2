@@ -366,3 +366,8 @@ html[data-mantine-color-scheme="light"] .leaflet-control-layers-expanded {
   text-decoration: underline;
   cursor: pointer;
 }
+
+.route-progress-legend { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; }
+.route-progress-legend span::before { content: ""; display: inline-block; width: 18px; border-top: 3px solid; margin-right: 5px; vertical-align: middle; }
+.route-passed-key::before { border-color: #89919b !important; }
+.route-remaining-key::before { border-color: #ffad32 !important; }

@@ -96,3 +96,11 @@ Both preferences are saved locally. Turning follow off keeps live selection and
 route updates active while allowing free panning and zooming. Turning it back on
 recenters on the selected train. Links with a train ID set the initial zoom once,
 so subsequent live updates do not reset a manually chosen zoom.
+
+For an unambiguous live position on the selected route, the travelled portion is
+gray and the remaining portion orange. Progress updates locally with train GPS;
+it does not request a new OSRM route on every update. If the train is over 500 m
+from the route, has invalid GPS, or matches widely separated route sections
+within 30 m of the best match, progress is marked uncertain and the full route
+remains orange. Route order follows the timetable, including reverse-direction
+journeys. The colors describe estimated progress, not a recorded track history.
