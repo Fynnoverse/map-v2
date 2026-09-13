@@ -78,17 +78,32 @@ export const StationMarker = memo(({ station }: StationMarkerProps) => {
 					);
 
 					if (stationEntry) {
-						router.push(
+						/*router.push(
 							`https://edr.fynnovation.com/${pathname.split("/")[2]}/station/${
 								stationEntry.id
 							}`,
+						);*/
+						window.open(
+							`https://edr.fynnovation.com/${pathname.split("/")[2]}/station/${
+								stationEntry.id
+							}`,
+							"_blank",
+							"noopener,noreferrer",
 						);
 					} else {
 						// Fallback to old behavior if station not found
+						/*
 						router.push(
 							`https://edr.fynnovation.com/${
 								pathname.split("/")[2]
 							}/station/${station.Prefix.toUpperCase()}`,
+						);*/
+						window.open(
+							`https://edr.fynnovation.com/${
+								pathname.split("/")[2]
+							}/station/${station.Prefix.toUpperCase()}`,
+							"_blank",
+							"noopener,noreferrer",
 						);
 					}
 				},
