@@ -2,6 +2,7 @@ import { Tooltip as MantineTooltip, type TooltipProps } from "@mantine/core";
 import { useFullscreen, useLocalStorage } from "@mantine/hooks";
 import type { Station, Train } from "@simrail/types";
 import { DISCORD_INVITE_URL } from "common/links";
+import type { Control as LeafletControl } from "leaflet";
 import type { LayersControlEvent, Map as LeafletMap } from "leaflet";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -83,6 +84,13 @@ const MapZoomAppearance = () => {
 
 const LeaftletMap = ({ serverId }: MapProps) => {
 	const [map, setMap] = useState<LeafletMap | null>(null);
+	const [layersControl, setLayersControl] =
+		useState<LeafletControl.Layers | null>(null);
+	const [followTrain, setFollowTrain] = useLocalStorage({
+		key: "followSelectedTrain",
+		defaultValue: true,
+	});
+	const initialTrainSelection = useRef("");
 
 	const router = useRouter();
 
@@ -201,24 +209,31 @@ const LeaftletMap = ({ serverId }: MapProps) => {
 			if (updatedTrain !== selectedTrain) {
 				setSelectedTrain(updatedTrain);
 			}
-			map.panTo(
-				[updatedTrain.TrainData.Latititute, updatedTrain.TrainData.Longitute],
-				{ animate: true, duration: 0.8, easeLinearity: 0.4 },
-			);
+			if (followTrain)
+				map.panTo(
+					[updatedTrain.TrainData.Latititute, updatedTrain.TrainData.Longitute],
+					{ animate: true, duration: 0.8, easeLinearity: 0.4 },
+				);
 		}
-	}, [trains, selectedTrain, map, setSelectedTrain]);
+	}, [trains, selectedTrain, map, setSelectedTrain, followTrain]);
 
 	useEffect(() => {
 		if (trainId) {
 			const requestedTrain = trains?.find(
 				(train) => train.TrainNoLocal === trainId,
 			);
-			if (requestedTrain) {
+			if (
+				requestedTrain &&
+				map &&
+				initialTrainSelection.current !==
+					`${String(serverId)}:${String(trainId)}`
+			) {
+				initialTrainSelection.current = `${String(serverId)}:${String(trainId)}`;
 				setSelectedTrain(requestedTrain);
 				map?.setZoom(13);
 			}
 		}
-	}, [trains, map, trainId, setSelectedTrain]);
+	}, [trains, map, trainId, setSelectedTrain, serverId]);
 
 	useEffect(() => {
 		const controller = new AbortController();
@@ -313,7 +328,13 @@ const LeaftletMap = ({ serverId }: MapProps) => {
 				preferCanvas={true}
 			>
 				<MapZoomAppearance />
-				<SelectedTrainRoute serverId={String(serverId)} stations={stations} />
+				<SelectedTrainRoute
+					serverId={String(serverId)}
+					stations={stations}
+					controls={layersControl}
+					followTrain={followTrain}
+					onFollowTrainChange={setFollowTrain}
+				/>
 				<Control position="bottomleft">
 					<div className={style.container}>
 						<Tooltip label="Our GitHub" position="right">
@@ -447,7 +468,11 @@ const LeaftletMap = ({ serverId }: MapProps) => {
 					/>
 				)}
 
-				<LayersControl position="bottomright" collapsed={false}>
+				<LayersControl
+					ref={setLayersControl}
+					position="bottomright"
+					collapsed={false}
+				>
 					<LayersControl.Overlay
 						checked={
 							localStorage.getItem("layer-trains") === null ||

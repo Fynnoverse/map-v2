@@ -346,3 +346,23 @@ html[data-mantine-color-scheme="light"] .leaflet-control-layers-expanded {
     white-space: nowrap;
   }
 }
+
+.selected-train-options {
+  max-width: 240px;
+  font-size: 12px;
+}
+.selected-train-options hr {
+  border: 0;
+  border-top: 1px solid currentColor;
+  opacity: 0.25;
+  margin: 8px 0;
+}
+.selected-train-options [role="status"] {
+  margin-top: 6px;
+  opacity: 0.8;
+}
+.selected-train-options button {
+  margin-top: 5px;
+  text-decoration: underline;
+  cursor: pointer;
+}

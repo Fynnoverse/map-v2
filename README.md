@@ -90,3 +90,9 @@ Run regression tests with Node.js 24:
 ```sh
 node --test tests/*.test.mjs
 ```
+The layer filter panel also contains **Show selected train route** and
+**Follow selected train**, separated from map layers by a horizontal rule.
+Both preferences are saved locally. Turning follow off keeps live selection and
+route updates active while allowing free panning and zooming. Turning it back on
+recenters on the selected train. Links with a train ID set the initial zoom once,
+so subsequent live updates do not reset a manually chosen zoom.

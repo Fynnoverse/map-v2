@@ -1,11 +1,11 @@
 import { useLocalStorage } from "@mantine/hooks";
 import type { Station } from "@simrail/types";
-import { DomEvent } from "leaflet";
+import type { Control as LeafletControl } from "leaflet";
 import { useEffect, useState } from "react";
 import { Polyline } from "react-leaflet";
 
 import { EDR_API_URL, ROUTING_URL } from "@/components/hosting";
-import Control from "@/components/MapControl";
+import LayerOptions from "@/components/LayerOptions";
 
 import { useSelectedTrain } from "../contexts/SelectedTrainContext";
 import {
@@ -29,9 +29,15 @@ type Result = {
 const SelectedTrainRoute = ({
 	serverId,
 	stations,
+	controls,
+	followTrain,
+	onFollowTrainChange,
 }: {
 	serverId: string;
 	stations: Station[];
+	controls: LeafletControl.Layers | null;
+	followTrain: boolean;
+	onFollowTrainChange: (value: boolean) => void;
 }) => {
 	const { selectedTrain } = useSelectedTrain();
 	const [visible, setVisible] = useLocalStorage({
@@ -113,64 +119,57 @@ const SelectedTrainRoute = ({
 			controller.abort();
 		};
 	}, [key, serverId, trainNumber, visible, stationData]);
-	if (!trainNumber) return null;
-	const message = !visible
-		? "Route hidden"
-		: current.status === "loading"
-			? "Loading route…"
-			: current.status === "unavailable"
-				? "Route unavailable — check routing and timetable data"
-				: "Railway route via known timetable points";
+	const message = !trainNumber
+		? "Select a train"
+		: !visible
+			? "Route hidden"
+			: current.status === "loading"
+				? "Loading route…"
+				: current.status === "unavailable"
+					? "Route unavailable — check routing and timetable data"
+					: "Railway route via known timetable points";
 	return (
 		<>
-			<Control position="bottomleft">
-				<div
-					ref={(node) => {
-						if (node) {
-							DomEvent.disableClickPropagation(node);
-							DomEvent.disableScrollPropagation(node);
-						}
-					}}
-					style={{
-						background: "#11141b",
-						color: "#eef1f5",
-						padding: 10,
-						borderRadius: 9,
-						maxWidth: 240,
-						fontSize: 12,
-					}}
-				>
-					<label style={{ display: "flex", gap: 8, cursor: "pointer" }}>
-						<input
-							type="checkbox"
-							checked={visible}
-							onChange={(event) => setVisible(event.target.checked)}
-						/>
-						Show selected train route
-					</label>
-					{visible &&
-						current.total !== undefined &&
-						current.matched !== undefined &&
-						current.matched < current.total && (
-							<div role="status">
-								{current.matched} of {current.total} timetable points located —
-								route may be incomplete
-							</div>
-						)}
-					<div role="status" style={{ marginTop: 6 }}>
-						{message}
-					</div>
-					{visible && current.status === "unavailable" && (
-						<button
-							type="button"
-							onClick={() => setAttempt((value) => value + 1)}
-						>
-							Retry route
-						</button>
+			<LayerOptions control={controls}>
+				<hr />
+				<label style={{ display: "flex", gap: 8, cursor: "pointer" }}>
+					<input
+						type="checkbox"
+						checked={visible}
+						onChange={(event) => setVisible(event.target.checked)}
+					/>
+					Show selected train route
+				</label>
+				<label style={{ display: "flex", gap: 8, cursor: "pointer" }}>
+					<input
+						type="checkbox"
+						checked={followTrain}
+						onChange={(event) => onFollowTrainChange(event.target.checked)}
+					/>
+					Follow selected train
+				</label>
+				{visible &&
+					current.total !== undefined &&
+					current.matched !== undefined &&
+					current.matched < current.total && (
+						<div role="status">
+							{current.matched} of {current.total} timetable points located —
+							route may be incomplete
+						</div>
 					)}
+				<div role="status" style={{ marginTop: 6 }}>
+					{message}
 				</div>
-			</Control>
-			{visible && current.points.length >= 2 && (
+				{visible && current.status === "unavailable" && (
+					<button
+						type="button"
+						onClick={() => setAttempt((value) => value + 1)}
+					>
+						Retry route
+					</button>
+				)}
+			</LayerOptions>
+			{trainNumber && visible && current.points.length >= 2 && (
 				<>
 					<Polyline
 						positions={current.points}
