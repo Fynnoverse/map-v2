@@ -199,7 +199,7 @@ const SelectedTrainRoute = ({
 					{progress.passed.length >= 2 && (
 						<Polyline
 							positions={progress.passed}
-							pathOptions={{ color: "#89919b", opacity: 0.65, weight: 4 }}
+							pathOptions={{ color: "#ffad327c", opacity: 0.65, weight: 4 }}
 							interactive={false}
 						/>
 					)}
