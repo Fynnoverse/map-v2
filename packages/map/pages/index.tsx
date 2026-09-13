@@ -11,7 +11,6 @@ import {
 } from "react";
 import { MdRefresh, MdSearch, MdTrain } from "react-icons/md";
 
-import { AdSlot } from "@/components/AdSlot";
 import EUFlag from "@/components/EUFlag";
 import FavoriteStar from "@/components/FavoriteStar";
 import { TopNavigation } from "@/components/TopNavigation";
@@ -22,12 +21,6 @@ import { readServerSettings } from "../types/ServerSettings";
 import styles from "../styles/Home.module.css";
 
 const SERVER_REFRESH_INTERVAL = 15_000;
-
-const SERVER_AD_SLOTS = {
-	leaderboard: process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SERVERS_LEADERBOARD_SLOT,
-	inFeed: process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SERVERS_INFEED_SLOT,
-	rail: process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_SERVERS_RAIL_SLOT,
-};
 
 const sortServers = (servers: Server[]) =>
 	[...servers].sort((first, second) => {
@@ -144,7 +137,6 @@ export default function Home() {
 							</div>
 						)}
 					</header>
-					<AdSlot placement="rail" slotId={SERVER_AD_SLOTS.rail} />
 
 					<div className={styles.toolbar}>
 						<label className={styles.search}>
@@ -176,10 +168,6 @@ export default function Home() {
 							</button>
 						</div>
 					)}
-					<AdSlot
-						placement="leaderboard"
-						slotId={SERVER_AD_SLOTS.leaderboard}
-					/>
 
 					<div className={styles.serverList} aria-live="polite">
 						{!servers &&
@@ -193,7 +181,7 @@ export default function Home() {
 								<span>Try a server code, country or region.</span>
 							</div>
 						)}
-						{filteredServers.map((server, index) => (
+						{filteredServers.map((server) => (
 							<Fragment key={server.id}>
 								<article className={styles.serverCard}>
 									<Link
@@ -226,9 +214,6 @@ export default function Home() {
 									</Link>
 									<FavoriteStar server={server} />
 								</article>
-								{index === 5 && (
-									<AdSlot placement="inFeed" slotId={SERVER_AD_SLOTS.inFeed} />
-								)}
 							</Fragment>
 						))}
 					</div>

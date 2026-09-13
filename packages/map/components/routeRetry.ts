@@ -5,7 +5,8 @@ export function routeRetry(signal: AbortSignal, run: () => void) {
 	const delays = [5000, 15000, 30000];
 	signal.addEventListener("abort", () => clearTimeout(timer), { once: true });
 	return () => {
-		if (signal.aborted || timer !== undefined || attempt >= delays.length) return;
+		if (signal.aborted || timer !== undefined || attempt >= delays.length)
+			return;
 		timer = setTimeout(() => {
 			timer = undefined;
 			if (!signal.aborted) run();

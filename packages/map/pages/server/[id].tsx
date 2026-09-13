@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import Head from "next/head";
 import { useRouter } from "next/router";
 
-import { DelayedAdBanner } from "@/components/DelayedAdBanner";
 import { TopNavigation } from "@/components/TopNavigation";
 
 import { SelectedTrainProvider } from "../../contexts/SelectedTrainContext";
@@ -60,7 +59,6 @@ const Post = () => {
 				<SelectedTrainProvider>
 					{!trainId && !embed && <TopNavigation />}
 					<MapWithNoSSR serverId={id} />
-					{!embed && <DelayedAdBanner />}
 				</SelectedTrainProvider>
 			</div>
 		</>

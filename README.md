@@ -67,23 +67,26 @@ to EDR and OSRM. Running this image alone requires an equivalent reverse proxy.
 
 ## Selected train route
 
-Selecting a train highlights its route in orange. The **Show selected train
-route** checkbox on the map remembers your preference. A solid line uses railway
-routing geometry through known timetable points. If routing fails, a dashed line
-connects the known timetable points directly; it is explicitly approximate and
-can omit stops without matching coordinates. It does not represent the exact
-track or the actual signal/dispatcher path. The status panel offers **Retry route**
-when routing or timetable data is unavailable.
+Selecting a train highlights its OSRM railway route in orange. The **Show selected
+train route** checkbox remembers your preference. Routing failures display a
+status message and no substitute straight-line route. Failed requests retry after
+5, 15 and 30 seconds; **Retry route** starts another attempt. Hiding the route or
+selecting another train cancels pending requests and retries.
 
-The timetable endpoint must return an EDR timetable array. The routing endpoint
-configured by `NEXT_PUBLIC_ROUTING_URL` must return OSRM JSON with `code: "Ok"`
-and GeoJSON geometry. With the Dockerfile's `/routing` setting, configure that
-path in your reverse proxy to reach a working railway OSRM service. A 404 page
-or an HTML response will activate the approximate display. Public URL settings
-are embedded during the frontend build.
+Incomplete station matching shows how many timetable points were located.
+Even a successful route may differ from the actual SimRail path when points are
+missing or the OSM network differs from the game.
 
-Route data regression tests (Node.js 24):
+`NEXT_PUBLIC_ROUTING_URL` defaults to `/routing`. The host reverse proxy must
+forward this path to railway OSRM and `/api` to EDR. Routing responses must
+contain OSRM JSON with `code: "Ok"` and GeoJSON coordinates.
+
+The map and server selection page do not load AdSense or the upstream Google Tag
+Manager container. Leaflet controls use React portals so selection changes do
+not move DOM nodes that React still manages in another parent.
+
+Run regression tests with Node.js 24:
 
 ```sh
-node --test tests/routeGeometry.test.mjs
+node --test tests/*.test.mjs
 ```

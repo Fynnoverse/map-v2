@@ -3,9 +3,9 @@ import type { Station } from "@simrail/types";
 import { DomEvent } from "leaflet";
 import { useEffect, useState } from "react";
 import { Polyline } from "react-leaflet";
-import Control from "react-leaflet-custom-control";
 
 import { EDR_API_URL, ROUTING_URL } from "@/components/hosting";
+import Control from "@/components/MapControl";
 
 import { useSelectedTrain } from "../contexts/SelectedTrainContext";
 import {
@@ -14,6 +14,7 @@ import {
 	type RoutePoint,
 	type RouteStation,
 } from "./routeGeometry";
+import { routeRetry } from "./routeRetry";
 import localStations from "./stations.json";
 import remoteStations from "./stationsRemote.json";
 
@@ -61,8 +62,6 @@ const SelectedTrainRoute = ({
 	useEffect(() => {
 		if (!trainNumber || !visible) return;
 		const controller = new AbortController();
-		let retryTimer: ReturnType<typeof setTimeout> | undefined;
-		let retryCount = 0;
 		let coverage: { matched?: number; total?: number } = {};
 		const publish = (points: RoutePoint[], status: Result["status"]) => {
 			if (!controller.signal.aborted)
@@ -103,17 +102,15 @@ const SelectedTrainRoute = ({
 			} catch {
 				publish([], "unavailable");
 				// Bounded recovery; selecting another train or hiding the route cancels it.
-				if (!controller.signal.aborted && retryCount < 3) {
-					retryTimer = setTimeout(() => {
-						void load();
-					}, [5000, 15000, 30000][retryCount++]);
-				}
+				scheduleRetry();
 			}
 		};
+		const scheduleRetry = routeRetry(controller.signal, () => {
+			void load();
+		});
 		void load();
 		return () => {
 			controller.abort();
-			clearTimeout(retryTimer);
 		};
 	}, [key, serverId, trainNumber, visible, stationData]);
 	if (!trainNumber) return null;

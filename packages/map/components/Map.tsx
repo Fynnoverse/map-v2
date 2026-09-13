@@ -29,8 +29,8 @@ import {
 	TileLayer,
 	useMap,
 } from "react-leaflet";
-import Control from "react-leaflet-custom-control";
 
+import Control from "@/components/MapControl";
 import NonPlayableStations from "@/components/NonPlayableStations";
 import RemoteStations from "@/components/RemoteStations";
 import SelectedTrainRoute from "@/components/SelectedTrainRoute";
